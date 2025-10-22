@@ -1,124 +1,100 @@
-# Moshi Fine-tuning on FlexAI# Minimal Moshi-Finetune Setup
+# Moshi Fine-tuning on FlexAI
 
+Fine-tune the Moshi 7B audio language model on FlexAI using LoRA and distributed training.
 
+## 🚀 Quick Start
 
-Fine-tune the Moshi 7B audio language model on FlexAI using LoRA and distributed training.This is a minimal setup for fine-tuning Moshi models, extracted from the original [moshi-finetune](https://github.com/kyutai-labs/moshi-finetune) repository.
+### Step 1: Authenticate with HuggingFace
 
-
-
-## Quick Start## 🚀 Quick Start
-
-
-
-### 1. Authenticate with HuggingFace### 1. Install Dependencies
-
-```bash```bash
-
-huggingface-cli logincd /workspace/fcs-experiments-private
-
-```pip install -r code/moshi-finetune/requirements.txt
-
+```bash
+huggingface-cli login
 ```
 
-### 2. Download Dataset
+### Step 2: Download Dataset from HuggingFace
 
-```bash### 2. Prepare Configuration
+Download the DailyTalkContiguous dataset to your local machine:
 
-python3 -c "from huggingface_hub import snapshot_download; \Edit `example/moshi_7B.yaml` to set your paths:
-
-  snapshot_download(repo_id='kyutai/DailyTalkContiguous', \- `data.train_data`: Path to your training data (`.jsonl` file)
-
-  repo_type='dataset', \- `run_dir`: Directory where checkpoints will be saved
-
+```bash
+python3 -c "from huggingface_hub import snapshot_download; \
+  snapshot_download(repo_id='kyutai/DailyTalkContiguous', \
+  repo_type='dataset', \
   local_dir='./DailyTalkContiguous', \
-
-  resume_download=True)"### 3. Run Training
-
-``````bash
-
-# Single GPU
-
-### 3. Upload to FlexAItorchrun --nproc-per-node 1 -m train example/moshi_7B.yaml
-
-```bash
-
-flexai checkpoint push dailytalk-contiguous --source-path ./DailyTalkContiguous# Multiple GPUs (8)
-
-```torchrun --nproc-per-node 8 --master_port $RANDOM -m train example/moshi_7B.yaml
-
+  resume_download=True)"
 ```
 
-### 4. Run Training
+This will create a `DailyTalkContiguous/` directory with:
+- `dailytalk.jsonl` - Metadata file with audio paths
+- `data_stereo/` - Stereo audio files (left: Moshi, right: user)
 
-```bash## 📊 Example Configuration
+### Step 3: Push Dataset to FlexAI Storage
 
+Upload the dataset to FlexAI as a checkpoint:
+
+```bash
+flexai checkpoint push dailytalk-contiguous \
+  --source-path ./DailyTalkContiguous
+```
+
+This makes the dataset available at `/input-checkpoint` during training.
+
+### Step 4: Run Training on FlexAI
+
+Launch distributed training on 4x H100 GPUs:
+
+```bash
 flexai training run moshi-finetune \
-
-  --accels 4 --nodes 1 \The `example/moshi_7B.yaml` contains optimized settings for training:
-
-  --repository-url https://github.com/malhajar17/Moshi-finetune-compatable \- LoRA rank: 128
-
-  --checkpoint dailytalk-contiguous \- Batch size: 16
-
-  --env FORCE_TORCHRUN=1 \- Learning rate: 2e-6
-
-  --env NCCL_NVLS_ENABLE=0 \- Duration: 100 seconds
-
-  --env TORCH_COMPILE_DISABLE=1 \- Max steps: 2000
-
+  --accels 4 --nodes 1 \
+  --repository-url https://github.com/malhajar17/Moshi-finetune-compatable \
+  --checkpoint dailytalk-contiguous \
+  --env FORCE_TORCHRUN=1 \
+  --env NCCL_NVLS_ENABLE=0 \
+  --env TORCH_COMPILE_DISABLE=1 \
   --env CUDA_VISIBLE_DEVICES=0,1,2,3 \
-
-  --affinity "cluster=k8s-training-smc-001" \## 🔧 Data Format
-
+  --affinity "cluster=k8s-training-smc-001" \
   --env HF_HUB_CACHE=/output/.cache \
-
-  --env HF_HUB_DISABLE_XET=1 \Your training data should be a `.jsonl` file where each line contains:
-
-  --requirements-path requirements.txt \```json
-
-  --runtime nvidia-25.03 \{"path": "relative/path/to/audio.wav", "duration": 24.5}
-
-  -- python -m torch.distributed.run --nproc-per-node 4 --nnodes 1 train.py example/moshi_7B.yaml```
-
+  --env HF_HUB_DISABLE_XET=1 \
+  --requirements-path requirements.txt \
+  --runtime nvidia-25.03 \
+  -- python -m torch.distributed.run \
+     --nproc-per-node 4 \
+     --nnodes 1 \
+     train.py \
+     example/moshi_7B.yaml
 ```
 
-Audio files should be stereo:
+### Step 5: Monitor Training
 
-### 5. Monitor- Left channel: Moshi-generated audio
+Watch the training logs in real-time:
 
-```bash- Right channel: User input audio
-
-flexai training logs moshi-finetune
-
-```Each audio file should have a corresponding `.json` transcript file.
-
-
-
-## Configuration## 📚 Full Documentation
-
-
-
-Training config is in `example/moshi_7B.yaml`:For complete documentation, dataset preparation, and advanced configuration, see the original [moshi-finetune repository](https://github.com/kyutai-labs/moshi-finetune).
-
-- Dataset path: `/input-checkpoint` (FlexAI checkpoint mount)
-
-- Output path: `/output-checkpoint` (where checkpoints are saved)## 🎯 What's Different in This Minimal Setup
-
-- LoRA rank: 128
-
-- Batch size: 1- **Simplified dependencies**: Only core requirements without torch (uses pre-installed torch 2.8)
-
-- Max steps: 2000- **Minimal moshi package**: Resolves dependency conflicts without pytest issues
-
-- **Clean structure**: Only essential files for training
-
-## Checkpoints- **Relative paths**: Works from the experiments directory
-
-Checkpoints are saved to `/output-checkpoint` every 100 steps.
-
-Retrieve with:
 ```bash
+flexai training logs moshi-finetune
+```
+
+
+
+## ⚙️ Configuration
+
+Training configuration in `example/moshi_7B.yaml`:
+
+| Setting | Value | Description |
+|---------|-------|-------------|
+| `train_data` | `/input-checkpoint` | Dataset path (FlexAI mount) |
+| `run_dir` | `/output-checkpoint` | Output directory for checkpoints |
+| `lora.rank` | 128 | LoRA adapter rank |
+| `batch_size` | 1 | Batch size per GPU |
+| `max_steps` | 2000 | Total training steps |
+| `optim.lr` | 2e-6 | Learning rate |
+| `ckpt_freq` | 100 | Checkpoint save frequency |
+
+## 💾 Retrieving Checkpoints
+
+After training, download your checkpoints:
+
+```bash
+# List available checkpoints
 flexai training checkpoints moshi-finetune
+
+# Download specific checkpoint
 flexai checkpoint pull <CHECKPOINT_ID> --destination ./trained-moshi
 ```
 
