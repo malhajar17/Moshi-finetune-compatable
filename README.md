@@ -39,11 +39,11 @@ This makes the dataset available at `/input-checkpoint` during training.
 
 ### Step 4: Run Training on FlexAI
 
-Launch distributed training on 4x H100 GPUs:
+Launch distributed training on 1x H100 GPUs:
 
 ```bash
 flexai training run moshi-finetune \
-  --accels 4 --nodes 1 \
+  --accels 1 --nodes 1 \
   --repository-url https://github.com/malhajar17/Moshi-finetune-compatable \
   --checkpoint dailytalk-contiguous \
   --env FORCE_TORCHRUN=1 \
@@ -56,7 +56,7 @@ flexai training run moshi-finetune \
   --requirements-path requirements.txt \
   --runtime nvidia-25.03 \
   -- python -m torch.distributed.run \
-     --nproc-per-node 4 \
+     --nproc-per-node 1 \
      --nnodes 1 \
      train.py \
      example/moshi_7B.yaml
