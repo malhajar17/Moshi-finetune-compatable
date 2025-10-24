@@ -49,7 +49,7 @@ flexai training run moshi-finetune \
   --env FORCE_TORCHRUN=1 \
   --env NCCL_NVLS_ENABLE=0 \
   --env TORCH_COMPILE_DISABLE=1 \
-  --env CUDA_VISIBLE_DEVICES=0,1,2,3 \
+  --env CUDA_VISIBLE_DEVICES=0 \
   --affinity "cluster=k8s-training-smc-001" \
   --env HF_HUB_CACHE=/output/.cache \
   --env HF_HUB_DISABLE_XET=1 \
