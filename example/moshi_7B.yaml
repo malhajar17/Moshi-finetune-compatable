@@ -39,8 +39,7 @@ ckpt_freq: 100
 
 save_adapters: true # Must be False if full_finetuning is True
 
-run_dir: "/output-checkpoint"  # FlexAI output directory for checkpoints
-overwrite_run_dir: true  # Allow overwriting existing run directory
+run_dir: "/output-checkpoint/finetune-1"  # FlexAI output directory for checkpoints
 
 # This part is optional and can be kept commented out
 # wandb:
